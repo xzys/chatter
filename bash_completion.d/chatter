@@ -1,0 +1,15 @@
+_chatter() {
+    local cur
+    COMPREPLY=()
+    #Variable to hold the current word
+    cur="${COMP_WORDS[COMP_CWORD]}"
+
+    #Build a list of our keywords for auto-completion using 
+    #the tags file
+    local tags=$(cat /hom/sachin/drive/people)
+    #Generate possible matches and store them in the 
+    #array variable COMPREPLY
+    COMPREPLY=($(compgen -W "${tags}" $cur))
+}
+
+complete -F _chatter chatter

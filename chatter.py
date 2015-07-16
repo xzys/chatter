@@ -36,6 +36,8 @@ messages = []
 contactss = []
 sending = False
 updated = True
+recp = None
+tosend = ''
 mlock = threading.Lock()
 
 def update_messages():
@@ -91,65 +93,80 @@ def send(text, number):
                     parse.quote_plus('+1({}) {}-{}'.format(number[:3], number[3:6], number[6:])), 
                     # parse.quote_plus('+({}) {}-{}'.format(number[:3], number[3:6], number[6:])), 
                     parse.quote_plus(text)])
-
-    print(res)
     return 200
 
+linelen = 0
 def say(m):
   global contacts
+  global linelen
   old = datetime.now() - datetime.strptime(' '.join(m['time']), "%m/%d/%y %H:%M:%S") > timedelta(1)
   name = ', '.join([namer(contacts[p]) if p in contacts else p for p in m['phone'].split('|')])
-  print('[\033[{}m{}\033[0m] [\033[{}m{}\033[0m] {}'.format(
-    #'90',
-    '91' if m['sent'] else '95',
-    m['time'][0] if old else m['time'][1], 
-    #90 + (sum([ord(c) for c in name])%7),
+  linelen = max(linelen, len(name))
+  s = '\033[{}m{} \033[{}m{}\033[93m'.format(
     90,
+    m['time'][0] if old else m['time'][1], 
+   '91' if m['sent'] else '95',
     name,
+    )
+  print(s.ljust(40) + '| \033[0m' + m['body'])
+#  print('[\033[{}m{}\033[0m] [\033[{}m{}\033[0m] {}'.format(
+    #'90',
+ #   '91' if m['sent'] else '95',
+    #90 + (sum([ord(c) for c in name])%7),
+  #  90,
     #contacts[m['phone']] if len(m['phone']) == 10 else ', '.join(contacts[p] for p in m['phone'].split('|')),
-    m['body']))
 
 # threads
-def sender(recp=None):
+def sender():
   global messages
   global contacts
   global sending
   global mlock
+  global updated
+  global tosend
+  global recp 
   rcontacts = {v: k for k, v in contacts.items()}
   with mlock:
     ms = [m for m in messages if ((m['phone'] == rcontacts[recp]) if recp else True)][:]
     for m in ms: say(m)
-
   while 1:
     print('[\033[{}m{}\033[0m] '.format('96', recp if recp else "--------"), end="")
     tosend = input()
-    if tosend.startswith('\\'):
-      r = [r for r in rcontacts.keys() if r.startswith(tosend[1:])]
-      recp = r[0] if len(r) > 0 else recp
-      print('\n' in tosend)
-    elif recp and '\\' not in tosend:
-      if len(tosend.strip()) > 0:
-        res = send(tosend, rcontacts[recp])
-        if res is not 200:
-          print('[\033[{}m{}\033[0m]\n{}'.format(91, 'ERROR', 'STAUTS CODE: {}'.format(res)))
-        else: pass
-          
     with mlock:
-      sending = True
+      if tosend.startswith('\\'):
+        r = [r for r in rcontacts.keys() if r.startswith(tosend[1:])]
+        recp = r[0] if len(r) > 0 else recp
+      elif recp and '\\' not in tosend and not updated:
+        if len(tosend.strip()) > 0:
+          sending = True
+          res = send(tosend, rcontacts[recp])
+          if res is not 200:
+            print('[\033[{}m{}\033[0m]\n{}'.format(91, 'ERROR', 'STAUTS CODE: {}'.format(res)))
+          else: pass
+      updated = False
+          
 
 def updater():
   global messages
   global sending
   global mlock
+  global tosend
+  global updated
+  global recp
   while 1: 
     delay = 5
     new = update_messages()
     if new:
-      print()
-      for m in new: say(m)
-      print('\r[\033[{}m{}\033[0m] {}\r'.format('93', "UPDATED", 'Loaded {} New Messages'.format(len(new))), end="")
+      print('')
+      for m in new: 
+        if tosend == m['body'] and m['sent']: print('\033[A\033[A',end='')
+        else: print('\033[A',end='')
+        say(m)
+      print('\r[\033[{}m{}\033[0m] {}\r'.format('93', "UPDATED", '{} New Messages'.format(len(new))), end="")
+      # print('\r[\033[{}m{}\033[0m] {}'.format('93', "UPDATED", '{}'.format(len(new))))
       with mlock:
         sending = False
+        updated = True
     
     with mlock:
       if sending: delay = 1
@@ -161,8 +178,9 @@ if __name__ == '__main__':
   if len(contacts) == 0: contacts = get_contacts()
   with open(root+'messages') as f: messages = json.loads(f.read())
   with open('/home/sachin/drive/notes/people', 'w') as f: f.write('\n'.join(contacts.values()))
-  person = ' '.join(sys.argv[1:])
   thread = threading.Thread(target=updater)
   thread.daemon = True
   thread.start()
-  sender(person if person in contacts.values() else None)
+  r = [r for r in contacts.values() if r.split(' ')[0] == ' '.join(sys.argv[1:])]
+  recp = r[1] if r else None
+  sender()

@@ -1,0 +1,7 @@
+#bin/sh
+phone=$1
+msg=$2
+cookie=$(cat "/home/sachin/drive/projects/chatter/cookie" | xargs)
+#echo ${phone} ${msg}
+#echo "curl -X POST -s 'https://textyserver.appspot.com/client?function=send&deviceType=ac2dm&source_client=37' -H 'origin: https://mail.google.com' -H 'accept-encoding: gzip, deflate' -H 'accept-language: en-US,en;q=0.8' -H 'csp: active' -H 'user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.125 Safari/537.36' -H 'content-type: application/x-www-form-urlencoded; charset=UTF-8' -H 'accept: */*' -H 'referer: https://mail.google.com/mail/u/0/' -H 'authority: textyserver.appspot.com' -H '${cookie}' --data 'phone=${phone}&type=10&source_client=37&deviceType=ac2dm&action=send_sms&action_data=${msg}' --compressed"
+curl -X POST -s 'https://textyserver.appspot.com/client?function=send&deviceType=ac2dm&source_client=37' -H 'origin: https://mail.google.com' -H 'accept-encoding: gzip, deflate' -H 'accept-language: en-US,en;q=0.8' -H 'csp: active' -H 'user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.125 Safari/537.36' -H 'content-type: application/x-www-form-urlencoded; charset=UTF-8' -H 'accept: */*' -H 'referer: https://mail.google.com/mail/u/0/' -H 'authority: textyserver.appspot.com' -H "cookie: ${cookie}" --data "phone=${phone}&type=10&deviceType=ac2dm&action=send_sms&action_data=${msg}" --compressed
